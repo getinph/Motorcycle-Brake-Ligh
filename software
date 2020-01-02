@@ -1,0 +1,302 @@
+#include <Adafruit_NeoPixel.h>
+
+#ifdef __AVR__
+#include <avr/power.h> // Required for 16 MHz Adafruit Trinket
+#endif
+
+#define LED_PIN 0 //pin d'encodage de l'attiny
+#define LED_COUNT 30 //nombre de led sur la bande a coder
+
+
+const int LB = 10; //longueur de bande cligno
+
+int pinClignoDroit=3;
+int pinClignoGauche = 2;
+int pinFeuxStop=4;
+unsigned long tempP;
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+void setup() 
+{  
+#if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
+  clock_prescale_set(clock_div_1);
+#endif
+
+  strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
+  
+  strip.show();            // Turn OFF all pixels ASAP
+  strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (m ax = 255)
+  pinMode(pinClignoDroit, INPUT); // cligno droit 
+  pinMode(pinClignoGauche,INPUT); //cligno gauche
+  pinMode(pinFeuxStop, INPUT); // feux stop 
+}
+
+  int32_t test = strip.Color(0, 0, 255);
+  int32_t nuLL = strip.Color(0, 0, 0); 
+  uint32_t air = strip.Color(255, 0, 0); //couleur feux stop 
+  int32_t ai = strip.Color(30, 0, 0); //couleur feux de position
+  int32_t jaune = strip.Color(155, 60, 0); //couleur cligno
+
+
+void loop() 
+{
+  strip.fill(ai,0, 30);
+  strip.show();
+  int buttonStatecligno = 0; 
+  int buttonStateStop = 0; 
+  int buttonStateCLignoG=0;
+  buttonStatecligno = digitalRead(pinClignoDroit);
+  buttonStateCLignoG = digitalRead(pinClignoGauche);
+  buttonStateStop = digitalRead(pinFeuxStop);
+
+  if (buttonStateCLignoG & !buttonStateStop) //on teste si etatAllumage est à 1
+  {
+    clignoGauche();  
+  }
+
+  if (buttonStatecligno & !buttonStateStop) //on teste si etatAllumage est à 1
+  {
+    clignoDroit();
+  }
+ if (buttonStateStop) //on teste si etatAllumage est à 1
+  {
+    feuxStop();
+  }
+
+  if (buttonStateStop & buttonStatecligno) //on teste si etatAllumage est à 1
+  {
+    les_deuxD();
+  }
+
+  if (buttonStateStop & buttonStateCLignoG) //on teste si etatAllumage est à 1
+  {
+    les_deuxG();
+  }
+
+}
+
+
+
+void les_deuxD()
+{
+  strip.fill(air, 0, 30);
+  strip.show();
+  tempP = millis();
+  bool changement = 0;
+  int buttonStatecligno = 0;
+  int buttonState = 0;
+  bool etatFeux = 1;
+  buttonStatecligno = digitalRead(pinClignoDroit);
+  buttonState = digitalRead(pinFeuxStop);
+  if (!buttonState | !buttonStatecligno)
+      {
+        loop();
+      }
+  for (int i=15 ;i<30;i++)
+  {
+      //delay(500);
+      int buttonStatecligno = 0; 
+      int buttonState = 0;
+      buttonState = digitalRead(pinFeuxStop);
+      buttonStatecligno = digitalRead(pinClignoDroit);
+      if (!buttonState | !buttonStatecligno)
+      {
+        break;
+      }
+      strip.fill(jaune, 15,i-14);
+      //strip.setPixelColor(i, 255, 60, 0);
+      strip.show();
+      //delay(500);
+      delay(30);
+      if (millis()-tempP >= 50)
+      {
+        tempP = millis();
+        if (etatFeux == 0)
+        {
+          strip.fill(air, 0, 30);
+          strip.fill(jaune, 15,i-14);
+          strip.show();
+          /*delay(500);
+          strip.fill(jaune, 15,i-14);
+          strip.show();
+          delay(500);
+          strip.fill(air, 0, 30);
+          strip.show();
+          delay(500);*/
+          changement = 1;
+        }
+        else 
+        {
+          strip.fill(nuLL, 0, 30);
+          strip.fill(jaune, 15,i-14 );
+          strip.show();
+          /*delay(500);
+          strip.fill(jaune, 15,i-14 );
+          strip.show();
+          delay(500);
+          strip.fill(nuLL, 0, 30);
+          strip.show();
+          delay(500);*/
+          changement = 1;
+        }
+        
+        if (changement)
+        {
+          if (etatFeux)etatFeux = 0;
+          else  etatFeux = 1;
+          changement = 0;
+        }
+      }
+      //tempA = millis();
+      //tempP = tempA;
+
+  }
+}
+
+void clignoDroit()
+{
+  int g = 1;
+  for (int i=0 ;i<30+LB;i++)
+  {
+      
+      int buttonStatecligno = 0; 
+      int buttonState = 0;
+      buttonState = digitalRead(pinFeuxStop);
+      buttonStatecligno = digitalRead(pinClignoDroit);
+      if (!buttonStatecligno | buttonState)
+      {
+        break;
+      }
+      if (i < LB)
+      {
+        strip.fill(jaune, i, 1);
+        strip.show();
+      }
+      else
+      {
+        strip.fill(jaune, i, 1);
+        strip.fill(ai, 0, g);
+        strip.show();
+        g += 1;
+      }
+      delay(10);
+  }
+  /*strip.fill(ai, 0, 30);
+  strip.show();*/
+}
+
+void clignoGauche()
+{
+  int g = 1;
+  int j = 1;
+  for (int i=30+10 ;i>=0;i--)
+  {
+      
+      int buttonStatecligno = 0; 
+      int buttonState = 0;
+      buttonState = digitalRead(pinFeuxStop);
+      buttonStatecligno = digitalRead(pinClignoGauche);
+      if (!buttonStatecligno | buttonState)
+      {
+        break;
+      }
+      if (i > 30)
+      {
+        strip.fill(jaune, i-LB, 1);
+        strip.show();
+      }
+      else if (i > LB)
+      {
+        strip.fill(jaune, i-LB, 1);
+        strip.fill(ai, i, j);
+        strip.show();
+        j +=1;
+      }
+      else
+      {
+        strip.fill(jaune, i-LB, 1);
+        strip.fill(ai, LB-g, 30-g);
+        strip.show();
+        g += 1;
+      }
+      delay(10);
+  }
+}
+
+void feuxStop()
+{
+      int buttonState = 0; 
+      buttonState = digitalRead(pinFeuxStop);
+      if (!buttonState)
+      {
+        loop();
+      }
+      strip.fill(air, 0, 30);
+      strip.show();
+      delay(50);
+      strip.fill(nuLL, 0, 30);
+      strip.show();
+      delay(50);
+  }
+
+  void les_deuxG()
+{
+  int g = 1;
+  strip.fill(air, 0, 30);
+  strip.show();
+  tempP = millis();
+  bool changement = 0;
+  int buttonStatecligno = 0;
+  int buttonState = 0;
+  bool etatFeux = 1;
+  buttonStatecligno = digitalRead(pinClignoGauche);
+  buttonState = digitalRead(pinFeuxStop);
+  if (!buttonState | !buttonStatecligno)
+      {
+        loop();
+      }
+  for (int i=15 ;i>=0;i--)
+  {
+      //delay(500);
+      int buttonStatecligno = 0; 
+      int buttonState = 0;
+      buttonState = digitalRead(pinFeuxStop);
+      buttonStatecligno = digitalRead(pinClignoGauche);
+      if (!buttonState | !buttonStatecligno)
+      {
+        break;
+      }
+      strip.fill(jaune, i,g);
+      //strip.setPixelColor(i, 255, 60, 0);
+      strip.show();
+      //delay(500);
+      delay(30);
+      if (millis()-tempP >= 50)
+      {
+        tempP = millis();
+        if (etatFeux == 0)
+        {
+          strip.fill(air, 0, 30);
+          strip.fill(jaune, i,g);
+          strip.show();
+          changement = 1;
+        }
+        else 
+        {
+          strip.fill(nuLL, 0, 30);
+          strip.fill(jaune, i,g );
+          strip.show();
+          changement = 1;
+        }
+        
+        if (changement)
+        {
+          if (etatFeux)etatFeux = 0;
+          else  etatFeux = 1;
+          changement = 0;
+        }
+      }
+      g+=1;
+  }
+  g = 1;
+}
